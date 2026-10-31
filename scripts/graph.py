@@ -87,23 +87,25 @@ def snake_layer(svg, x, y):
     return f'<g transform="translate({x - SNK_OFFSET * k} {y - SNK_OFFSET * k}) scale({k})">{body}</g>'
 
 
-def render(cal, theme, snake=None):
+def render(cal, theme, snake=None, header=True):
+    header_h = HEADER_H if header else 0
     weeks = cal["weeks"]
     grid_x = PAD + DAY_LABEL_W
-    grid_y = HEADER_H + PAD + MONTH_H
+    grid_y = header_h + PAD + MONTH_H
     grid_w = len(weeks) * STEP - GAP
     box_w = DAY_LABEL_W + grid_w + 2 * PAD
     legend_y = grid_y + 7 * STEP - GAP + 14
-    box_h = legend_y + 10 + PAD - HEADER_H
-    width, height = box_w + 2, HEADER_H + box_h + 1
+    box_h = legend_y + 10 + PAD - header_h
+    width, height = box_w + 2, header_h + box_h + 1
 
     week_of = {d["date"]: i for i, w in enumerate(weeks) for d in w["contributionDays"]}
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
         f'font-family="{FONT}">',
-        f'<text x="1" y="18" font-size="16" fill="{theme["text"]}">{plural(cal["totalContributions"], "contribution")} in the last year</text>',
-        f'<rect x="0.5" y="{HEADER_H + 0.5}" width="{box_w}" height="{box_h}" rx="6" fill="none" stroke="{theme["border"]}"/>',
+        f'<rect x="0.5" y="{header_h + 0.5}" width="{box_w}" height="{box_h}" rx="6" fill="none" stroke="{theme["border"]}"/>',
     ]
+    if header:
+        out.insert(1, f'<text x="1" y="18" font-size="16" fill="{theme["text"]}">{plural(cal["totalContributions"], "contribution")} in the last year</text>')
 
     # Month labels sit over the week holding the 1st; GitHub drops a month with under two weeks on the graph.
     for m in cal["months"]:
@@ -149,7 +151,8 @@ def main():
         if snake_dir and os.path.exists(os.path.join(snake_dir, name)):
             snake = open(os.path.join(snake_dir, name)).read()
         with open(os.path.join(out_dir, name), "w") as f:
-            f.write(render(cal, theme, snake))
+            # The README's hover graph above carries the total, so the snake graph goes without it.
+            f.write(render(cal, theme, snake, header=snake is None))
     print(f"{login}: {cal['totalContributions']} contributions, {len(cal['weeks'])} weeks")
 
 

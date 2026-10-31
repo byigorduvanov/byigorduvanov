@@ -7,6 +7,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: halloween-graph
+  cancel-in-progress: false
+
 jobs:
   generate:
     permissions:
@@ -25,13 +29,15 @@ jobs:
             snake/halloween-graph.svg?color_snake=#7c3aed&color_dots=#ebedf0,#ffee4a,#ffc501,#fe9600,#03001c
             snake/halloween-graph-dark.svg?palette=github-dark&color_snake=#a855f7&color_dots=#151b23,#631c03,#bd561d,#fa7a18,#fddf68
 
-      # The profile contribution graph, same layout and labels, with the snake inside it.
-      - name: draw the graph
-        run: python3 scripts/graph.py "${{ github.repository_owner }}" dist snake
+      # The snake graph, and the README graph with one image per day so hovering a day shows its count.
+      - name: draw the graphs
+        run: |
+          python3 scripts/graph.py "${{ github.repository_owner }}" dist snake
+          python3 scripts/hover_graph.py "${{ github.repository_owner }}" dist/hover README.md scripts/snake.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: push it to the output branch
+      - name: push the images to the output branch
         uses: crazy-max/ghaction-github-pages@v5
         with:
           target_branch: output
@@ -40,3 +46,12 @@ jobs:
           commit_message: "Update the Halloween graph"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Day counts live in the README's image titles, so it changes whenever a count does.
+      - name: commit the README
+        run: |
+          git diff --quiet README.md && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update the contribution graph" README.md
+          git push
