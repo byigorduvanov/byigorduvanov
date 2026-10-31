@@ -29,11 +29,12 @@ jobs:
             snake/halloween-graph.svg?color_snake=#7c3aed&color_dots=#ebedf0,#ffee4a,#ffc501,#fe9600,#03001c
             snake/halloween-graph-dark.svg?palette=github-dark&color_snake=#a855f7&color_dots=#151b23,#631c03,#bd561d,#fa7a18,#fddf68
 
-      # The snake graph, and the README graph with one image per day so hovering a day shows its count.
+      # The README graph has one image per day so hovering a day shows its count; the snake graph is published
+      # to the output branch too but is not in the README, since it cannot carry per-day titles.
       - name: draw the graphs
         run: |
           python3 scripts/graph.py "${{ github.repository_owner }}" dist snake
-          python3 scripts/hover_graph.py "${{ github.repository_owner }}" dist/hover README.md scripts/snake.md
+          python3 scripts/hover_graph.py "${{ github.repository_owner }}" dist/hover README.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

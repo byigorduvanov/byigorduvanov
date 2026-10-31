@@ -90,7 +90,7 @@ def html(login, cal, base):
                    f'<img src="{base}l{name}"{t} align="top"></picture>')
         else:
             tag = f'<img src="{base}{name}"{t} align="top">'
-        return f'<a href="{href}">{tag}</a>' if href else tag
+        return f'<a href="{href}"{t}>{tag}</a>' if href else tag
 
     profile = f"https://github.com/{login}"
     by_row = [[None] * len(cal["weeks"]) for _ in range(7)]
