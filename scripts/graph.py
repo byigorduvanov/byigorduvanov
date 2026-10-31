@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Draw the GitHub contribution graph, laid out like the profile one, in GitHub's Halloween colours.
 
-Usage: GITHUB_TOKEN=... python3 scripts/graph.py <login> <out_dir>
+Usage: GITHUB_TOKEN=... python3 scripts/graph.py <login> <out_dir> [<snake_dir>]
 Writes <out_dir>/halloween-graph.svg (light) and <out_dir>/halloween-graph-dark.svg (dark).
+With <snake_dir> holding Platane/snk SVGs of the same names, the snake and its grid replace the static cells.
 """
 import json
 import os
+import re
 import sys
 import urllib.request
 from datetime import date
@@ -50,6 +52,7 @@ PAD = 16          # inside the bordered box
 DAY_LABEL_W = 32  # room for Mon / Wed / Fri
 HEADER_H = 32     # "N contributions in the last year"
 MONTH_H = 20
+SNK_STEP, SNK_OFFSET = 16, 2  # snk draws cell i at 2 + 16 * i
 
 
 def fetch(login, token):
@@ -76,7 +79,15 @@ def tooltip(day):
     return f"{what} on {d.strftime('%B')} {d.day}"
 
 
-def render(cal, theme):
+def snake_layer(svg, x, y):
+    """snk's grid and snake, scaled so its cells land exactly on ours; its progress bar is dropped."""
+    body = re.sub(r"^.*?<svg[^>]*>|</svg>\s*$", "", svg, flags=re.S)
+    body = re.sub(r"<desc>.*?</desc>|<rect class=\"u[^>]*/>", "", body, flags=re.S)
+    k = STEP / SNK_STEP
+    return f'<g transform="translate({x - SNK_OFFSET * k} {y - SNK_OFFSET * k}) scale({k})">{body}</g>'
+
+
+def render(cal, theme, snake=None):
     weeks = cal["weeks"]
     grid_x = PAD + DAY_LABEL_W
     grid_y = HEADER_H + PAD + MONTH_H
@@ -110,9 +121,12 @@ def render(cal, theme):
         return (f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2" fill="{theme["cells"][level]}" '
                 f'stroke="{theme["cell_border"]}">{t}</rect>')
 
-    for i, w in enumerate(weeks):
-        for d in w["contributionDays"]:
-            out.append(cell(grid_x + i * STEP, grid_y + d["weekday"] * STEP, LEVELS[d["contributionLevel"]], tooltip(d)))
+    if snake:
+        out.append(snake_layer(snake, grid_x, grid_y))
+    else:
+        for i, w in enumerate(weeks):
+            for d in w["contributionDays"]:
+                out.append(cell(grid_x + i * STEP, grid_y + d["weekday"] * STEP, LEVELS[d["contributionLevel"]], tooltip(d)))
 
     out.append(f'<text x="{PAD}" y="{legend_y + 9}" font-size="12" fill="{theme["muted"]}">Learn how we count contributions</text>')
     right = grid_x + grid_w
@@ -127,11 +141,15 @@ def render(cal, theme):
 
 def main():
     login, out_dir = sys.argv[1], sys.argv[2]
+    snake_dir = sys.argv[3] if len(sys.argv) > 3 else None
     cal = fetch(login, os.environ["GITHUB_TOKEN"])
     os.makedirs(out_dir, exist_ok=True)
     for name, theme in THEMES.items():
+        snake = None
+        if snake_dir and os.path.exists(os.path.join(snake_dir, name)):
+            snake = open(os.path.join(snake_dir, name)).read()
         with open(os.path.join(out_dir, name), "w") as f:
-            f.write(render(cal, theme))
+            f.write(render(cal, theme, snake))
     print(f"{login}: {cal['totalContributions']} contributions, {len(cal['weeks'])} weeks")
 
 
